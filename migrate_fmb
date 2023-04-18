@@ -1,0 +1,110 @@
+#Script to migrate fmb files
+. EBS_ENV_FILE #### Source your ebs env file here
+echo "##### You Choose to migrate .fmb file in XBOL_TOP"
+scr_log=$LOG_HOME/forms_migr_op.log;export scr_log
+find_log=$LOG_HOME/forms_migr_find.log;export find_log
+find_log2=$LOG_HOME/forms_migr_find2.log;export find_log2
+usr_nme=`whoami`; export usr_nme
+hstnme=`hostname`; export hstnme
+
+#echo $usr_nme
+#echo $hstnme
+name_conv=`echo $usr_nme|tr 'a-z' 'A-Z'`;export name_conv
+#echo "User Name is : $name_conv"
+echo "User $name_conv has logged in to $hstnme at $dateis" >> $scr_log
+
+echo -e "Enter the file name : \c"
+read fle_name
+fmbfile=`echo $fle_name|cut -d "." -f1`;export fmbfile
+#echo $fmbfile
+if [ "$fle_name" = "" ]; then
+echo "You entered NULL Value for filename, please enter a valid file name. Exiting from script !!!!"
+echo "User entered NULL Value for filename, exiting from script !!!! - Date: $dateis" >> $scr_log
+echo -e "\n" >> $scr_log
+exit;
+else
+echo "File name you entered is $fle_name"
+echo "User $name_conv has typed the filename $fle_name" >> $scr_log
+#echo "\n" >> $scr_log
+cd /home/applusr/MIGRATION/FORMS/
+echo "Finding file $fle_name from /home/applusr/MIGRATION/FORMS - Date: $dateis" >> $scr_log
+find . -name "$fle_name" > $find_log
+F15M="cut -d "/" -f2 $find_log";export F15M
+F16M=`cat $find_log|wc -l`;export F16M
+if [ "$F16M" -gt 0 ]; then
+echo "File $fle_name, found in /home/applusr/MIGRATION/FORMS - Date: $dateis, file exists !!!!" >> $scr_log
+find $AU_TOP/forms/US -name "$fle_name" > $find_log2
+F17M=`cut -d "/" -f12 $find_log2`;export F17M
+#echo "File name ******* $F17M"
+F18M=`cat $find_log2|wc -l`;export F18M
+if [ $F18M -gt 0 ]; then
+echo "Finding file $fle_name from "$"AU_TOP/forms/US - Date: $dateis" >> $scr_log
+echo "File $fle_name, found in "$"AU_TOP/forms/US - Date: $dateis, file exists !!!! in XBOL_TOP" >> $scr_log
+cp $AU_TOP/forms/US/$fle_name $AU_TOP/forms/US/"$fle_name"_`date +%d%b%y_%H%M%S`
+echo "Backing up $fle_name in "$"AU_TOP/forms/US" >> $scr_log
+echo "Backing up $fle_name in "$"AU_TOP/forms/US"
+mv $fle_name $AU_TOP/forms/US
+echo "File $fle_name has been moved to "$"AU_TOP/forms/US Date - $dateis"
+echo "File $fle_name has been moved to "$"AU_TOP/forms/US Date - $dateis" >> $scr_log
+#echo "\n" >> $scr_log
+cd $AU_TOP/forms/US
+echo "Compiling form $fle_name in "$"AU_TOP/forms/US" >> $scr_log
+echo "Compiling form $fle_name in "$"AU_TOP/forms/US"
+watw=`echo $pw|openssl enc -aes-128-cbc -a -d -salt -pass pass:asdffdsa`; export watw
+#echo $watw
+frm_cmp_log=$LOG_HOME/"$fmbfile"_`date +%d%b%y_%H%M%S`.log; export frm_cmp_log
+touch $frm_cmp_log
+echo "Logfile :- $frm_cmp_log" >> $scr_log
+echo "Logfile :- $frm_cmp_log"
+frmcmp_batch module=$AU_TOP/forms/US/$fle_name userid=apps/"$watw" output_file=$XBOL_TOP/forms/US/$fmbfile.fmx module_type=form compile_all=special > $frm_cmp_log
+ct=`cat $frm_cmp_log|grep -i "Form not created"|wc -l`; export ct
+if [ $ct -eq 1 ]; then
+echo "Forms not Created. Please check logfile:- $frm_cmp_log) for errors"
+else
+echo "Form $fle_name has been compiled" >> $scr_log
+echo "Form $fle_name has been compiled"
+echo -e "\n" >> $scr_log
+fi
+else
+echo "This file is not found in "$"AU_TOP/forms/US, please confirm if this is a new file to be migrated (Y/N) :"
+echo "This file is not found in "$"AU_TOP/forms/US, might be a new file. Waiting for User confirmation(Y/N)" >> $scr_log
+read confim
+if [ $confim = 'Y' ]; then
+echo "User entered $confim Date - $dateis"
+echo "User entered $confim, compiling a new file in "$"AU_TOP Date - $dateis" >> $scr_log
+mv $fle_name $AU_TOP/forms/US
+echo "File $fle_name has been moved to "$"AU_TOP/forms/US Date - $dateis"
+echo "File $fle_name has been moved to "$"AU_TOP/forms/US Date - $dateis" >> $scr_log
+cd $AU_TOP/forms/US
+echo "Compiling form $fle_name in "$"AU_TOP/forms/US" >> $scr_log
+echo "Compiling form $fle_name in "$"AU_TOP/forms/US"
+watw=`echo $pw|openssl enc -aes-128-cbc -a -d -salt -pass pass:asdffdsa`; export watw
+#echo $watw
+frm_cmp_log=$LOG_HOME/"$fmbfile"_`date +%d%b%y_%H%M%S`.log; export frm_cmp_log
+touch $frm_cmp_log
+echo "Logfile :- $frm_cmp_log" >> $scr_log
+echo "Logfile :- $frm_cmp_log"
+frmcmp_batch module=$AU_TOP/forms/US/$fle_name userid=apps/"$watw" output_file=$XBOL_TOP/forms/US/$fmbfile.fmx module_type=form compile_all=special > $frm_cmp_log
+ct=`cat $frm_cmp_log|grep -i "Form not created"|wc -l`; export ct
+if [ $ct -eq 1 ]; then
+echo "Forms not Created. Please check logfile:- $frm_cmp_log for errors"
+echo "Form $fle_name has not been compiled" >> $scr_log
+echo -e "\n" >> $scr_log
+else
+echo "Form $fle_name has been compiled" >> $scr_log
+echo "Form $fle_name has been compiled"
+echo -e "\n" >> $scr_log
+fi
+else
+echo "User entered N,(please review the file name, the file you entered doesnot exist in "$"AU_TOP/forms/US) exiting from script Date - $dateis !!!!"
+echo "User entered N,(the file $fle_name doesnot exist in "$"AU_TOP/forms/US,  might be a new file) exiting from script Date - $dateis !!!!" >> $scr_log
+echo -e "\n" >> $scr_log
+exit;
+fi
+fi
+else
+echo "The file $fle_name does not exist in /home/applusr/MIGRATION/FORMS - Date: $dateis, pls verify the file name"
+echo "The file $fle_name does not exist in /home/applusr/MIGRATION/FORMS - Date: $dateis" >> $scr_log
+echo -e "\n" >> $scr_log
+fi
+fi
